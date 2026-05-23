@@ -1,0 +1,24 @@
+{
+  "tier_1": [
+    {"id": "t1_a", "intent": "link_to_material",
+     "text": "Coba simak bentar — yang lagi dibahas ini nyambung sama yang sebelumnya."},
+    {"id": "t1_b", "intent": "spark_curiosity",
+     "text": "Bentar, coba tebak dalam hati: topiknya sekarang tentang apa sih?"},
+    {"id": "t1_c", "intent": "orient_to_screen",
+     "text": "Coba lihat layar sekarang — lagi di topik apa sih?"}
+  ],
+  "tier_2": [
+    {"id": "t2_a", "intent": "normalize_then_redirect",
+     "text": "Pikiran melayang di kelas online emang sering kejadian. Coba balik ke layar dulu, denger 1–2 kalimat pengajar aja."},
+    {"id": "t2_b", "intent": "emphasize_importance",
+     "text": "Bagian ini salah satu yang paling penting di sesi, sayang banget kalau kelewat. Coba fokus bentar ke pengajar, simak 1 poin dulu."},
+    {"id": "t2_c", "intent": "smallest_step",
+     "text": "Gampang kok buat balik fokus — lihat layar bentar, itu aja udah cukup."}
+  ],
+  "tier_3": {
+    "prompt": "Masih di sini? Pilih salah satu:",
+    "continue_label": "Lanjutkan",
+    "break_label": "Istirahat sebentar",
+    "break_followup": "Oke! Coba cuci muka atau peregangan ringan — balik kalau udah siap. 🙂"
+  }
+}
