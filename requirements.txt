@@ -1,0 +1,44 @@
+# ============================================================
+# Student Engagement Detection – Python Dependencies
+# ============================================================
+# Install with:  pip install -r requirements.txt
+# GPU note: install the CUDA-enabled torch wheel first, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# ----- Deep learning core -----
+torch
+torchvision
+timm                        # ViT and other modern vision backbones
+transformers                # TimeSformer, HuggingFace models
+
+# ----- Classical ML -----
+scikit-learn
+
+# ----- Computer vision / video -----
+opencv-python
+facenet-pytorch             # MTCNN face detector
+decord                      # fast video loading
+
+# ----- Data wrangling -----
+pandas
+numpy
+
+# ----- Visualisation -----
+matplotlib
+seaborn
+Pillow
+
+# ----- Progress & experiment tracking -----
+tqdm
+wandb
+
+# ----- Notebook tooling -----
+nbformat                    # programmatic .ipynb generation
+jupyter
+ipykernel
+
+# ----- Kaggle integration -----
+kaggle                      # Kaggle Datasets & Kernels API
+
+# ----- Config -----
+pyyaml                      # load configs/base_config.yaml
