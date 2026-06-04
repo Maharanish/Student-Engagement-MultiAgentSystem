@@ -17,6 +17,25 @@ from pathlib import Path
 
 import numpy as np
 
+import os
+import sys
+from export_log import transform_log_to_readable
+
+if getattr(sys, 'frozen', False):
+    _internal_dir = sys._MEIPASS
+    _torch_lib_dir = os.path.join(_internal_dir, "torch", "lib")
+    
+    # Daftarkan folder _internal dan torch/lib ke dalam variabel environment PATH
+    os.environ["PATH"] = _internal_dir + os.pathsep + _torch_lib_dir + os.pathsep + os.environ.get("PATH", "")
+    
+    # Untuk Python 3.8 ke atas di Windows, kita wajib mendaftarkan direktori secara eksplisit
+    if hasattr(os, 'add_dll_directory'):
+        os.add_dll_directory(_internal_dir)
+        try:
+            os.add_dll_directory(_torch_lib_dir)
+        except FileNotFoundError:
+            pass
+
 _REPO_ROOT = Path(__file__).resolve().parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
@@ -198,11 +217,17 @@ def main() -> int:
             count=len(tier3_unclicked),
             msg_ids=[iv.get("msg_id") for iv in tier3_unclicked],
         )
+        
+    if hasattr(logger, 'log_path'):
+        transform_log_to_readable(logger.log_path)
+    elif hasattr(logger, '_out_path'):
+        transform_log_to_readable(logger._out_path)
+    elif hasattr(logger, 'current_log_path'):
+        transform_log_to_readable(logger.current_log_path)
 
-    profile = update_profile_from_session(profile, logger.path)
-    save_profile(args.user_id, profile)
-    _log.info("Saved profile %r (n_sessions=%s)",
-              args.user_id, profile.get("n_sessions"))
+    # profile = update_profile_from_session(profile, logger.path)
+    # save_profile(args.user_id, profile)
+    # _log.info("Saved profile %r (n_sessions=%s)", args.user_id, profile.get("n_sessions"))
 
     return 0
 
