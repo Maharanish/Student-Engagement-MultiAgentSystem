@@ -29,6 +29,10 @@ def fatigue_cost(n_interventions: int) -> float:
 def _cooldown_blocked(snapshot: dict, now: float) -> bool:
     if snapshot.get("silent_mode"):
         return True
+    # Tier-3 break window: while now < break_until, the system is paused
+    # waiting for the student to click the return widget.
+    if now < float(snapshot.get("break_until", 0.0)):
+        return True
     session_start = float(snapshot.get("session_start", now))
     if (now - session_start) < WARMUP_SEC:
         return True

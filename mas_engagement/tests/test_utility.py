@@ -49,6 +49,13 @@ def test_choose_action_returns_do_nothing_when_belief_concentrated_on_engaged():
 
 
 def test_all_intervention_eus_negative_inf_during_warmup():
+    # If production has disabled warmup gating (WARMUP_SEC <= 0), there is
+    # no warmup window to assert about — skip rather than synthesise one.
+    if WARMUP_SEC <= 0:
+        pytest.skip(
+            "WARMUP_SEC <= 0 — warmup gating is disabled in production config; "
+            "the warmup-block invariant does not apply."
+        )
     b = {s: 0.25 for s in HIDDEN_STATES}
     snap = _snapshot(session_start=1000.0)
     now = 1000.0 + WARMUP_SEC * 0.5  # still warming up

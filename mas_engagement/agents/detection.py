@@ -23,6 +23,13 @@ try:
 except ImportError:
     _TRANSFORMERS_AVAILABLE = False
 
+try:
+    from PIL import Image as _PILImage
+    from facenet_pytorch import MTCNN as FaceMTCNN
+    _MTCNN_AVAILABLE = True
+except Exception:  # ImportError or torchvision/torch ABI mismatch at import
+    _MTCNN_AVAILABLE = False
+
 _log = logging.getLogger(__name__)
 
 _PKG_ROOT = Path(__file__).resolve().parent.parent
@@ -35,12 +42,63 @@ from mas_engagement.config import (  # noqa: E402
     INFERENCE_INTERVAL,
     MODEL_CONFIG_DIR,
     MODEL_WEIGHTS_PATH,
+    MTCNN_MARGIN_PX,
     NUM_CLASSES,
     NUM_FRAMES,
 )
 
 _IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 _IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+if _MTCNN_AVAILABLE:
+    _mtcnn = FaceMTCNN(
+        image_size=FRAME_SIZE,
+        margin=MTCNN_MARGIN_PX,
+        keep_all=False,
+        device="cpu",
+        post_process=False,
+    )
+else:
+    _mtcnn = None
+
+
+def _crop_face(frame_rgb_np: np.ndarray) -> np.ndarray:
+    """Detect a face in an RGB uint8 frame and return a 224x224 RGB crop.
+
+    Falls back to a centre square crop if no face is found (or MTCNN is
+    unavailable), and emits one warning per call so the rate of fallbacks is
+    visible in the logs.
+    """
+    h, w = frame_rgb_np.shape[:2]
+
+    boxes = None
+    if _mtcnn is not None:
+        try:
+            boxes, _ = _mtcnn.detect(_PILImage.fromarray(frame_rgb_np))
+        except Exception as exc:  # pragma: no cover — defensive
+            _log.warning("MTCNN detect failed: %s", exc)
+            boxes = None
+
+    if boxes is not None and len(boxes) > 0:
+        x1, y1, x2, y2 = boxes[0]
+        m = MTCNN_MARGIN_PX
+        x1 = int(max(0, x1 - m))
+        y1 = int(max(0, y1 - m))
+        x2 = int(min(w, x2 + m))
+        y2 = int(min(h, y2 + m))
+        if x2 > x1 and y2 > y1:
+            crop = frame_rgb_np[y1:y2, x1:x2]
+            if _CV2_AVAILABLE:
+                return _cv2.resize(crop, (FRAME_SIZE, FRAME_SIZE))
+
+    _log.warning('{"agent":"detection","event":"no_face_fallback"}')
+    side = min(h, w)
+    y0 = (h - side) // 2
+    x0 = (w - side) // 2
+    centre = frame_rgb_np[y0:y0 + side, x0:x0 + side]
+    if _CV2_AVAILABLE:
+        return _cv2.resize(centre, (FRAME_SIZE, FRAME_SIZE))
+    return centre
 
 
 def _open_camera(hint: int) -> Optional[object]:
@@ -124,7 +182,7 @@ class DetectionAgent:
         last_inference: float = 0.0
 
         try:
-            while not self._stop_event.is_set():
+            while not self._stop_event.is_set(): #camera
                 if cap is not None:
                     ret, frame = cap.read()
                     if ret:
@@ -189,8 +247,8 @@ class DetectionAgent:
     @staticmethod
     def _preprocess(frame: np.ndarray) -> np.ndarray:
         rgb = _cv2.cvtColor(frame, _cv2.COLOR_BGR2RGB)
-        resized = _cv2.resize(rgb, (FRAME_SIZE, FRAME_SIZE))
-        normalized = (resized.astype(np.float32) / 255.0 - _IMAGENET_MEAN) / _IMAGENET_STD
+        cropped = _crop_face(rgb)
+        normalized = (cropped.astype(np.float32) / 255.0 - _IMAGENET_MEAN) / _IMAGENET_STD
         return normalized.transpose(2, 0, 1)  # (C, H, W)
 
 

@@ -173,6 +173,47 @@ def test_messages_json_parses_with_validated_shape():
 
 # ── Pending-message payload (tier_3 carries structured widget content) ────────
 
+def test_break_until_round_trip_and_clear():
+    """break_until pauses interventions via the utility-side cooldown gate;
+    clear_break() resumes normal operation."""
+    import math
+    from mas_engagement.reasoning.utility import _cooldown_blocked
+
+    state = SharedState(warmup_duration=0)
+    snap = state.snapshot()
+    assert snap["break_until"] == 0.0
+
+    # set_break_until → cooldown blocks until that ts has passed.
+    now = time.time()
+    state.set_break_until(now + 120.0)
+    assert state.get_break_until() == now + 120.0
+    snap = state.snapshot()
+    # Force the warmup/start gates out of the way so we only test break_until.
+    snap["silent_mode"] = False
+    snap["session_start"] = now - 1_000_000
+    snap["interventions"] = []
+    assert _cooldown_blocked(snap, now) is True
+    assert _cooldown_blocked(snap, now + 200.0) is False    # window passed
+
+    # math.inf is the "indefinite pause" mode (used while the return widget
+    # is on screen).
+    state.set_break_until(math.inf)
+    snap = state.snapshot()
+    snap["silent_mode"] = False
+    snap["session_start"] = now - 1_000_000
+    snap["interventions"] = []
+    assert _cooldown_blocked(snap, now + 10_000_000) is True
+
+    # clear_break resumes.
+    state.clear_break()
+    assert state.get_break_until() == 0.0
+    snap = state.snapshot()
+    snap["silent_mode"] = False
+    snap["session_start"] = now - 1_000_000
+    snap["interventions"] = []
+    assert _cooldown_blocked(snap, now) is False
+
+
 def test_set_pending_message_carries_intent_for_tier1():
     """Tier-1/Tier-2 pending messages must carry the message's intent code so
     Delivery can render a 'Maksud: <bahasa label>' line on the card."""

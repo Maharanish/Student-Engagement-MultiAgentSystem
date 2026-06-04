@@ -21,6 +21,21 @@ from mas_engagement.agents.orchestrator import (
 from mas_engagement.blackboard import SharedState
 from mas_engagement.config import WARMUP_SEC
 
+# Trace fixtures are authored on the assumption that the orchestrator's warmup
+# elapses at trace-t = 600 s. We insulate the simulator from whatever value
+# production WARMUP_SEC currently holds (it can be raised, lowered, or even
+# disabled to 0 by user_config.json or a manual edit) by shifting session_start
+# so the utility-gate elapses exactly at trace-t = _TRACE_WARMUP_SEC.
+#
+# Derivation: the gate is `(now - session_start) < WARMUP_SEC`. We want the
+# gate to flip at now = _TRACE_WARMUP_SEC, so we pick
+#     session_start = _TRACE_WARMUP_SEC - WARMUP_SEC.
+# Verify:
+#   WARMUP_SEC=0   → session_start=600; flip at (600 - 600) = 0 < 0 → no  ✓
+#   WARMUP_SEC=600 → session_start=0;   flip at (600 - 0)   = 600 < 600 → no ✓
+#   WARMUP_SEC=900 → session_start=-300; flip at (600+300)  = 900 < 900 → no ✓
+_TRACE_WARMUP_SEC = 600.0
+
 
 def replay(trace: Dict[str, Any]) -> Tuple[List[Tuple[float, str]], Dict]:
     """Replay a trace at 1 Hz; return (actions_log, final_snapshot).
@@ -29,9 +44,11 @@ def replay(trace: Dict[str, Any]) -> Tuple[List[Tuple[float, str]], Dict]:
     dispatched a non-do-nothing action.
     """
     bb = SharedState(warmup_duration=0)
-    # Use real production warmup: session starts at t=0, warmup ends at WARMUP_SEC.
-    bb._state["session_start"] = 0.0
-    bb._state["warmup_until"] = WARMUP_SEC
+    # Insulate trace replay from the production WARMUP_SEC value (see comment
+    # above). Trace fixtures still see "warmup ends at t=600" regardless of
+    # what is configured in config.py at the moment.
+    bb._state["session_start"] = _TRACE_WARMUP_SEC - WARMUP_SEC
+    bb._state["warmup_until"] = _TRACE_WARMUP_SEC
 
     events = sorted(trace["events"], key=lambda e: e["t"])
     end_t = int(trace.get("duration") or (max(e["t"] for e in events) + 120))

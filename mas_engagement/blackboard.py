@@ -32,6 +32,10 @@ class SharedState:
             "intervention_count": 0,
             "warmup_until": now + warmup_duration,
             "session_start": now,
+            # Tier-3 "Istirahat sebentar" break window: while now < break_until
+            # the utility-side _cooldown_blocked treats the system as paused
+            # (interventions blocked). Cleared on "Siap" click.
+            "break_until": 0.0,
         }
 
     def set_session_start_time(self, now: float) -> None:
@@ -178,6 +182,23 @@ class SharedState:
             self._state["belief_state"] = copy.deepcopy(belief)
 
     # ── Session flags ─────────────────────────────────────────────────────────
+
+    # ── Tier-3 break window ──────────────────────────────────────────────────
+
+    def set_break_until(self, ts: float) -> None:
+        """Pause intervention dispatch until epoch-time `ts` (use math.inf for
+        an indefinite pause; clear with `clear_break()`)."""
+        with self._lock:
+            self._state["break_until"] = float(ts)
+
+    def get_break_until(self) -> float:
+        with self._lock:
+            return float(self._state["break_until"])
+
+    def clear_break(self) -> None:
+        """Resume normal operation — orchestrator may fire interventions again."""
+        with self._lock:
+            self._state["break_until"] = 0.0
 
     def set_silent_mode(self, active: bool) -> None:
         """Enable or disable silent mode (suppresses outbound messages when True)."""

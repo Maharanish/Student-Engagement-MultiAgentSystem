@@ -485,6 +485,147 @@ def show_tier3_widget(
     return outcome[0]
 
 
+# ── Public: Tier-3 RETURN widget (after the 2-minute break) ──────────────────
+
+def show_tier3_return_widget(
+    prompt: str = "Yuk lanjut belajar lagi! 🙂",
+    button_label: str = "Siap",
+) -> str:
+    """Persistent single-button widget shown after the break window elapses.
+
+    Mirrors the cream-card aesthetic of :func:`show_tier3_widget` but with
+    only one primary button — the student presses it to signal they are
+    ready to resume. Blocks until pressed; returns ``"ready"``.
+    """
+    if not _TK_AVAILABLE:
+        raise ImportError("tkinter is not available on this platform")
+
+    outcome: List[str] = [""]
+    done = threading.Event()
+    accent = _TIER_ACCENT["3"]
+
+    def _build() -> None:
+        root = tk.Tk()
+        root.withdraw()
+
+        family = _pick_family()
+        font_header = _font(family, 9,  "bold")
+        font_body   = _font(family, 11)
+        font_btn    = _font(family, 10, "bold")
+
+        win = tk.Toplevel(root)
+        win.overrideredirect(True)
+        win.attributes("-topmost", True)
+        win.attributes("-alpha", _ALPHA)
+
+        rounded_ok = _try_transparent_window(win)
+        canvas_bg = _TRANSPARENT_KEY if rounded_ok else _CARD_BG
+        win.configure(bg=canvas_bg)
+
+        wrap_w = _CARD_WIDTH - 2 * _PAD_X
+        header_h = _ICON_SIZE + 6
+        body_h = _measure_text_height(root, prompt, font_body, wrap_w)
+        btn_row_h = 36
+
+        card_h = (
+            _PAD_TOP + header_h
+            + _GAP_HEADER + body_h
+            + _GAP_BUTTONS + btn_row_h
+            + _PAD_BOTTOM
+        )
+
+        canvas = tk.Canvas(
+            win, width=_CARD_WIDTH, height=card_h,
+            bg=canvas_bg, highlightthickness=0, bd=0,
+        )
+        canvas.pack(fill="both", expand=True)
+
+        _rounded_rect(
+            canvas, 0, 0, _CARD_WIDTH, card_h,
+            _CARD_RADIUS, fill=_CARD_BG, outline=_CARD_BORDER, width=1,
+        )
+
+        # Header — accent icon ┃ "EduAgent"
+        icon_y1 = _PAD_TOP
+        icon_y2 = icon_y1 + _ICON_SIZE
+        _rounded_rect(
+            canvas, _PAD_X, icon_y1, _PAD_X + _ICON_SIZE, icon_y2,
+            _ICON_RADIUS, fill=accent, outline="",
+        )
+        canvas.create_text(
+            _PAD_X + _ICON_SIZE + 8, (icon_y1 + icon_y2) // 2,
+            text="EduAgent", anchor="w", font=font_header, fill=_INK_SOFT,
+        )
+
+        # Body — return prompt
+        body_y = _PAD_TOP + header_h + _GAP_HEADER
+        body_lbl = tk.Label(
+            canvas, text=prompt, font=font_body,
+            bg=_CARD_BG, fg=_INK,
+            wraplength=wrap_w, justify="left", anchor="w",
+        )
+        canvas.create_window(_PAD_X, body_y, anchor="nw", window=body_lbl)
+
+        # Single primary button
+        btn_row = tk.Frame(canvas, bg=_CARD_BG)
+        canvas.create_window(
+            _PAD_X, body_y + body_h + _GAP_BUTTONS,
+            anchor="nw", window=btn_row, width=wrap_w,
+        )
+
+        def _destroy() -> None:
+            try:
+                win.destroy()
+                root.destroy()
+            except tk.TclError:
+                pass
+
+        def _on_ready() -> None:
+            outcome[0] = "ready"
+            done.set()
+            _destroy()
+
+        ready_btn = tk.Button(
+            btn_row, text=button_label, command=_on_ready,
+            bg=accent, fg=_BTN_PRIMARY_INK,
+            activebackground=accent, activeforeground=_BTN_PRIMARY_INK,
+            font=font_btn, relief="flat", bd=0,
+            padx=16, pady=6, cursor="hand2",
+        )
+        ready_btn.pack(side="left")
+
+        # Slide-in from the right (same animation as the main Tier-3 widget).
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        target_x = sw - _CARD_WIDTH - _MARGIN_RIGHT
+        target_y = sh - card_h - _MARGIN_BOTTOM
+        start_x  = sw + 20
+        win.geometry(f"{_CARD_WIDTH}x{card_h}+{start_x}+{target_y}")
+
+        def _slide_in() -> None:
+            def _step(i: int) -> None:
+                if done.is_set():
+                    return
+                frac = i / _SLIDE_FRAMES
+                eased = 1 - (1 - frac) ** 3
+                x = int(start_x + (target_x - start_x) * eased)
+                try:
+                    win.geometry(f"{_CARD_WIDTH}x{card_h}+{x}+{target_y}")
+                except tk.TclError:
+                    return
+                if i < _SLIDE_FRAMES:
+                    root.after(_TICK_MS, lambda: _step(i + 1))
+            _step(0)
+
+        root.after(0, _slide_in)
+        root.mainloop()
+
+    t = threading.Thread(target=_build, daemon=True)
+    t.start()
+    done.wait()
+    return outcome[0]
+
+
 # ── Legacy: kept for older callers / tests. Not used by Delivery anymore. ─────
 
 def show_persistent_widget(text: str, options: List[str]) -> str:

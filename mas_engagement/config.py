@@ -25,6 +25,7 @@ INFERENCE_INTERVAL: float = 2.0
 NUM_FRAMES: int = 8
 FRAME_SIZE: int = 224
 NUM_CLASSES: int = 4
+MTCNN_MARGIN_PX: int = 20
 
 # ── Intervention ──────────────────────────────────────────────────────────────
 INTERVENTION_POLL_HZ: float = 5.0
@@ -38,14 +39,31 @@ TIER3_OPTIONS = ["Got it", "Need help", "Dismiss"]
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 ORCHESTRATOR_POLL_HZ: float = 1.0
-WARMUP_DURATION: float = 600.0    # REVISED: must match WARMUP_SEC (teacher validation)
-CONFIDENCE_MIN: float = 0.6       # records below this are excluded from the signal
-ENGAGEMENT_WINDOW_SEC: float = 30.0
+WARMUP_DURATION: float = 30.0    # REVISED: must match WARMUP_SEC (teacher validation)
+CONFIDENCE_MIN: float = 0.4       # records below this are excluded from the signal
+ENGAGEMENT_WINDOW_SEC: float = 2
 DISENGAGE_RATIO: float = 0.5      # fraction of window that must be disengaged to trigger
 MIN_TIER_GAP_SEC: float = 60.0    # minimum seconds between successive tier decisions
 MAX_INTERVENTIONS: int = 4        # session cap; reaching it triggers silent mode
 TIER3_PERSISTENT      = True   # widget stays until clicked; silent mode at session end only
 TIER3_BREAK_NUDGE_SEC = 5      # seconds to show wellness nudge after "break" click
+
+# "Istirahat sebentar" break flow: after the wellness nudge closes the system
+# pauses interventions for BREAK_DURATION_SEC, then plays a chime and shows a
+# persistent return widget. The session resumes (with belief intact) when the
+# student clicks "Siap". See docs/CHANGES_post_validation.md § 9.5.
+BREAK_DURATION_SEC: float = 120.0   # 2-minute break window
+BREAK_CHIME_FREQ_HZ: int  = 880     # A5; gentle but noticeable
+BREAK_CHIME_MS: int       = 500     # half-second chime
+
+# Per-tier notification chimes. Tier-1 / Tier-2 are deliberately softer
+# (lower frequency, shorter duration) than Tier-3 so the audio cue itself
+# carries the tier's seriousness.
+TIER1_CHIME_FREQ_HZ: int = 660      # E5; soft "ping"
+TIER1_CHIME_MS:      int = 120
+TIER2_CHIME_FREQ_HZ: int = 760      # G5; a touch more attention-grabbing
+TIER2_CHIME_MS:      int = 180
+# Tier-3 reuses the same chime as the return-from-break (BREAK_CHIME_*).
 
 # ── Session ───────────────────────────────────────────────────────────────────
 DEFAULT_USER_ID: str = "default_user"
@@ -104,8 +122,8 @@ FATIGUE_MIDPOINT: float = 3.0
 FATIGUE_STEEPNESS: float = 1.5
 
 # Cooldown / pacing for intervention actions.
-MIN_GAP_SEC: float = 180.0  # REVISED: longer recovery window (teacher validation)
-WARMUP_SEC: float = 600.0   # REVISED: first 10 min naturally engaging (teacher validation)
+MIN_GAP_SEC: float = 60.0  # REVISED: longer recovery window (teacher validation)
+WARMUP_SEC: float = 0.0   # REVISED: first 10 min naturally engaging (teacher validation)
 
 # Profile storage (next to the .exe when frozen; repo-root ./profiles otherwise).
 PROFILES_DIR = _BASE_DIR / "profiles"
