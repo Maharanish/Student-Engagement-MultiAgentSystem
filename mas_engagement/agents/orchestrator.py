@@ -123,7 +123,7 @@ class OrchestratorAgent:
         poll_interval = 1.0 / ORCHESTRATOR_POLL_HZ
         while not self._stop.is_set():
             self.tick(time.time())
-            time.sleep(poll_interval)
+            self._stop.wait(poll_interval)
 
     def stop(self) -> None:
         self._stop.set()
@@ -145,7 +145,10 @@ class OrchestratorAgent:
         self._bb.set_belief_state(belief)
 
         if action != "do_nothing":
-            self._bb.set_pending_action(action, now)
+            snap2 = self._bb.snapshot()
+            if snap2.get("pending_action") is None:
+                self._bb.set_pending_action(action, now)
+                self._bb.set_last_intervention_ts(now)
 
         n_eng = sum(
             1 for r in snap.get("engagement_history", []) or []

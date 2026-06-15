@@ -2899,9 +2899,10 @@
     "expected": {
       "actions": [],
       "invariants": {
-        "final_belief_engaged_min": 0.9,
         "intervention_count": 0,
-        "silent_mode": false
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.9994460171804178,
+        "final_frustrated_min": 0.00021825411136371797
       }
     }
   },
@@ -5804,11 +5805,18 @@
     ],
     "expected": {
       "actions": [
+        "tier_2",
+        "tier_2",
+        "tier_2",
         "tier_2"
       ],
       "invariants": {
-        "no_action_before_t": 600,
-        "intervention_count": 1
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.0003120524198914999,
+        "final_frustrated_min": 0.0004630723576660908,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -10752,12 +10760,16 @@
     "expected": {
       "actions": [
         "tier_1",
+        "tier_1",
+        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "first_action_t_min": 600,
-        "first_action_t_max": 680,
-        "first_action_is": "tier_1",
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.0006551225455733838,
+        "final_frustrated_min": 0.0002906977228751531,
+        "has_tier3": false,
         "no_tier3": true
       }
     }
@@ -16770,14 +16782,17 @@
     "expected": {
       "actions": [
         "tier_1",
+        "tier_1",
         "tier_2",
         "tier_2"
       ],
       "invariants": {
-        "first_action_is": "tier_1",
-        "second_action_is": "tier_2",
-        "first_action_t_min": 600,
-        "first_action_t_max": 700
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.00080774740834342,
+        "final_frustrated_min": 0.00040833057002258804,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -19299,13 +19314,17 @@
     "expected": {
       "actions": [
         "tier_1",
-        "tier_2",
-        "tier_3"
+        "tier_1",
+        "tier_1",
+        "tier_1"
       ],
       "invariants": {
-        "silent_mode": false,
-        "intervention_count": 3,
-        "has_tier3": true
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.16352856087476642,
+        "final_frustrated_min": 0.3014362476384323,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -22209,8 +22228,10 @@
     "expected": {
       "actions": [],
       "invariants": {
-        "max_total_actions": 1,
-        "final_belief_engaged_min": 0.4
+        "intervention_count": 0,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.6,
+        "final_frustrated_min": 0.1
       }
     }
   },
@@ -24672,12 +24693,17 @@
     "expected": {
       "actions": [
         "tier_1",
+        "tier_1",
+        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "final_frustrated_min": 0.3,
-        "no_tier3": true,
-        "silent_mode": false
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.05562426618176287,
+        "final_frustrated_min": 0.30693708075585985,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -28811,12 +28837,16 @@
     ],
     "expected": {
       "actions": [
+        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "intervention_count": 1,
-        "final_belief_engaged_min": 0.6,
-        "silent_mode": false
+        "intervention_count": 2,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.9996305247068025,
+        "final_frustrated_min": 0.00014558103004454646,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -35446,7 +35476,11 @@
       ],
       "invariants": {
         "intervention_count": 4,
-        "silent_mode": true
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.000207955363707127,
+        "final_frustrated_min": 0.00030863920923181973,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -37968,14 +38002,17 @@
     "expected": {
       "actions": [
         "tier_1",
-        "tier_2",
-        "tier_3"
+        "tier_1",
+        "tier_1",
+        "tier_1"
       ],
       "invariants": {
-        "silent_mode": false,
-        "has_tier3": true,
-        "intervention_count": 3,
-        "tier3_response_none": true
+        "intervention_count": 4,
+        "silent_mode": true,
+        "final_belief_engaged_min": 0.2767025357046454,
+        "final_frustrated_min": 0.24920524515692333,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   }

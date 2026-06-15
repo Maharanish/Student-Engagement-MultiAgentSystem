@@ -80,12 +80,12 @@ class InterventionAgent:
         }
 
     def run(self) -> None:
-        """Blocking 5 Hz poll loop; exits when stop_event is set."""
+        """Event-driven loop; blocks on the action queue, wakes every 0.5 s to
+        check stop_event so graceful shutdown is never delayed more than 0.5 s."""
         while not self._stop.is_set():
-            item = self._bb.consume_pending_action()
+            item = self._bb.consume_pending_action(timeout=0.5)
             if item is not None:
                 self._handle_action(str(item["action"]), float(item["ts"]))
-            time.sleep(_POLL_INTERVAL)
 
     def _handle_action(self, action: str, ts: float) -> None:
         """Route an orchestrator action: dispatch tier_N as before, skip do_nothing."""

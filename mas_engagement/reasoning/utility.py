@@ -36,10 +36,18 @@ def _cooldown_blocked(snapshot: dict, now: float) -> bool:
     session_start = float(snapshot.get("session_start", now))
     if (now - session_start) < WARMUP_SEC:
         return True
+    # Cooldown: prefer last_intervention_ts (set when Orchestrator decides)
+    # over interventions array (set when Delivery appends), to activate
+    # cooldown immediately and prevent double-firing. Fall back to
+    # interventions for backward compatibility with tests/old snapshots.
+    last_intervention_ts = float(snapshot.get("last_intervention_ts", 0.0))
+    if last_intervention_ts > 0.0 and (now - last_intervention_ts) < MIN_GAP_SEC:
+        return True
+    # Fallback: check interventions array if last_intervention_ts not set.
     interventions = snapshot.get("interventions", []) or []
-    if interventions:
-        last_ts = max(float(i["ts"]) for i in interventions)
-        if (now - last_ts) < MIN_GAP_SEC:
+    if interventions and last_intervention_ts == 0.0:
+        last_delivery_ts = max(float(i["ts"]) for i in interventions)
+        if (now - last_delivery_ts) < MIN_GAP_SEC:
             return True
     return False
 

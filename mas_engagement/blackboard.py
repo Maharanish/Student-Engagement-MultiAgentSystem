@@ -1,4 +1,5 @@
 import copy
+import queue
 import threading
 import time
 from typing import Any, Dict, List, Optional
@@ -19,8 +20,6 @@ class SharedState:
         now = time.time()
         self._state: Dict[str, Any] = {
             "engagement_history": [],
-            "pending_action": None,
-            "pending_message": None,
             "interventions": [],
             "response_history": [],
             "belief_state": (
@@ -36,7 +35,15 @@ class SharedState:
             # the utility-side _cooldown_blocked treats the system as paused
             # (interventions blocked). Cleared on "Siap" click.
             "break_until": 0.0,
+            # Timestamp when intervention was dispatched (set_last_intervention_ts),
+            # used by cooldown logic to block double-firing before Delivery finishes
+            "last_intervention_ts": 0.0,
         }
+        # Queue-based slots — intentionally outside _state and _lock.
+        # queue.Queue is internally thread-safe; holding RLock during a
+        # blocking get(timeout) would deadlock the entire blackboard.
+        self._action_queue: queue.Queue = queue.Queue(maxsize=1)
+        self._message_queue: queue.Queue = queue.Queue(maxsize=1)
 
     def set_session_start_time(self, now: float) -> None:
         """Reset the session clock; warmup window is re-anchored to `now`."""
@@ -81,17 +88,32 @@ class SharedState:
         """Write a pending orchestrator action (e.g. 'tier_2', 'do_nothing').
 
         action must be one of mas_engagement.config.ACTIONS.
-        Overwrites any previously unread value.
+        Latest-wins: any previously unread value is discarded before the new
+        one is enqueued.  No RLock — queue.Queue is internally thread-safe and
+        holding RLock during a blocking get would deadlock the blackboard.
         """
-        with self._lock:
-            self._state["pending_action"] = {"action": action, "ts": ts}
+        item = {"action": action, "ts": ts}
+        try:
+            self._action_queue.get_nowait()  # discard stale item if present
+        except queue.Empty:
+            pass
+        try:
+            self._action_queue.put_nowait(item)
+        except queue.Full:
+            pass  # defensive; should not occur after the drain above
 
-    def consume_pending_action(self) -> Optional[Dict]:
-        """Atomically read and clear the pending action; returns None if none was set."""
-        with self._lock:
-            value = self._state["pending_action"]
-            self._state["pending_action"] = None
-            return value
+    def consume_pending_action(self, timeout: Optional[float] = None) -> Optional[Dict]:
+        """Read and remove the pending action.
+
+        timeout=None  → non-blocking (returns None immediately if empty); used by tests.
+        timeout=float → blocks up to `timeout` seconds; used by InterventionAgent.
+        """
+        try:
+            if timeout is None:
+                return self._action_queue.get_nowait()
+            return self._action_queue.get(timeout=timeout)
+        except queue.Empty:
+            return None
 
     # ── Pending outbound message ──────────────────────────────────────────────
 
@@ -104,30 +126,44 @@ class SharedState:
         payload: Optional[Dict[str, Any]] = None,
         intent: Optional[str] = None,
     ) -> None:
-        """Write a pending outbound message; overwrites any previously unread value.
+        """Write a pending outbound message; latest-wins (discards any unread value).
 
         `msg_id` identifies the specific message in the bank (tier_1/tier_2 picks).
         `payload` carries structured tier_3 content (prompt/continue_label/
         break_label/break_followup) so Delivery can render the persistent widget.
         `intent` is the message's purpose code (e.g. "link_to_material") used by
         Delivery to render a "Maksud: <bahasa label>" footer line on the card.
+        No RLock — see set_pending_action for rationale.
         """
-        with self._lock:
-            self._state["pending_message"] = {
-                "msg": msg,
-                "tier": tier,
-                "ts": ts,
-                "msg_id": msg_id,
-                "payload": copy.deepcopy(payload) if payload is not None else None,
-                "intent": intent,
-            }
+        item = {
+            "msg": msg,
+            "tier": tier,
+            "ts": ts,
+            "msg_id": msg_id,
+            "payload": copy.deepcopy(payload) if payload is not None else None,
+            "intent": intent,
+        }
+        try:
+            self._message_queue.get_nowait()  # discard stale item if present
+        except queue.Empty:
+            pass
+        try:
+            self._message_queue.put_nowait(item)
+        except queue.Full:
+            pass  # defensive
 
-    def consume_pending_message(self) -> Optional[Dict]:
-        """Atomically read and clear the pending message, returning None if none was set."""
-        with self._lock:
-            value = self._state["pending_message"]
-            self._state["pending_message"] = None
-            return value
+    def consume_pending_message(self, timeout: Optional[float] = None) -> Optional[Dict]:
+        """Read and remove the pending message.
+
+        timeout=None  → non-blocking; used by tests and legacy callers.
+        timeout=float → blocks up to `timeout` seconds; used by DeliveryAgent.
+        """
+        try:
+            if timeout is None:
+                return self._message_queue.get_nowait()
+            return self._message_queue.get(timeout=timeout)
+        except queue.Empty:
+            return None
 
     # ── Interventions and response history ────────────────────────────────────
 
@@ -209,6 +245,12 @@ class SharedState:
         """Increment the session-level intervention counter by one."""
         with self._lock:
             self._state["intervention_count"] += 1
+
+    def set_last_intervention_ts(self, ts: float) -> None:
+        """Catat waktu intervensi segera saat dikirim ke queue,
+        sebelum Delivery selesai — supaya cooldown aktif lebih awal."""
+        with self._lock:
+            self._state["last_intervention_ts"] = float(ts)
 
     def is_warmup_active(self, now: float) -> bool:
         """Return True if the warmup period has not yet elapsed relative to now."""

@@ -105,7 +105,8 @@ def _open_camera(hint: int) -> Optional[object]:
     """Try hint index first, then scan 0‥CAMERA_SCAN_RANGE-1 for OBS Virtual Camera."""
     if not _CV2_AVAILABLE:
         return None
-    candidates = [hint] + [i for i in range(CAMERA_SCAN_RANGE) if i != hint]
+    candidates = [hint] + [i for i in range(CAMERA_SCAN_RANGE - 1, -1, -1) if i != hint]
+
     for idx in candidates:
         cap = _cv2.VideoCapture(idx, _cv2.CAP_DSHOW)
         if cap.isOpened():

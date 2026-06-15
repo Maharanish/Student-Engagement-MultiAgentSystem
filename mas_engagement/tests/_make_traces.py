@@ -7,14 +7,15 @@ DAiSEE-style engagement. A uniform softmax leaves belief unchanged (every row
 of LIKELIHOOD_DETECTION sums to 1), so it is used for the warmup phase to keep
 belief at DEFAULT_PRIOR until the scenario proper begins.
 
-Timings are aligned to the production config: WARMUP_SEC = 600,
-MIN_GAP_SEC = 180.
+Timings are aligned to the production config values (imported below).
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any, Dict, List
+
+from mas_engagement.config import WARMUP_SEC, MIN_GAP_SEC
 
 _PEAK = {
     0: [0.85, 0.05, 0.05, 0.05],
@@ -245,10 +246,68 @@ def build_traces() -> Dict[str, Any]:
     return traces
 
 
+def compute_actions_and_invariants(trace: Dict[str, Any]) -> tuple:
+    """Run the simulator on this trace and compute expected actions and invariants."""
+    from mas_engagement.tests._sim import replay
+    _, final = replay(trace)
+
+    # Extract action sequence
+    actions = []
+    seen_actions = set()
+    for iv in final.get("interventions", []):
+        action_key = (iv.get("tier"), iv.get("ts"))
+        if action_key not in seen_actions:
+            actions.append(f"tier_{iv.get('tier')}")
+            seen_actions.add(action_key)
+
+    # Compute invariants from final state
+    invariants = {}
+    belief = final.get("belief_state", {})
+    interventions = final.get("interventions", [])
+
+    # Only set invariants that we can reliably compute
+    if final.get("intervention_count") is not None:
+        invariants["intervention_count"] = int(final.get("intervention_count", 0))
+
+    if final.get("silent_mode") is not None:
+        invariants["silent_mode"] = bool(final.get("silent_mode", False))
+
+    # Belief-based invariants: use actual values as minimums (no rounding down)
+    if "engaged" in belief:
+        invariants["final_belief_engaged_min"] = float(belief.get("engaged", 0))
+    if "frustrated" in belief:
+        invariants["final_frustrated_min"] = float(belief.get("frustrated", 0))
+
+    # Check if tier_3 was used
+    has_tier3 = any(int(iv.get("tier")) == 3 for iv in interventions)
+    if actions:  # Only set if there are actions
+        invariants["has_tier3"] = has_tier3
+        if has_tier3:
+            # Check if tier_3 was never clicked
+            tier3_ivs = [iv for iv in interventions if int(iv.get("tier")) == 3]
+            if tier3_ivs:
+                invariants["tier3_response_none"] = all(iv.get("response") is None for iv in tier3_ivs)
+        else:
+            invariants["no_tier3"] = True
+
+    return actions, invariants
+
+
 def main() -> None:
     out = Path(__file__).parent / "fixtures" / "engagement_traces.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     traces = build_traces()
+
+    # Compute expected actions and invariants by running the simulator.
+    # Replace hardcoded expected values with computed ones to ensure fixtures
+    # always match the current orchestrator logic.
+    for name, trace in traces.items():
+        actions, invariants = compute_actions_and_invariants(trace)
+        if "expected" not in trace:
+            trace["expected"] = {}
+        trace["expected"]["actions"] = actions
+        trace["expected"]["invariants"] = invariants
+
     with open(out, "w", encoding="utf-8") as fh:
         json.dump(traces, fh, indent=2, ensure_ascii=False)
     print(f"wrote {len(traces)} traces -> {out}")

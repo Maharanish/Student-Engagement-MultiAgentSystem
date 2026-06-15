@@ -16,12 +16,12 @@ else:
     _BASE_DIR = _PKG_ROOT.parent
 
 # ── Camera ────────────────────────────────────────────────────────────────────
-CAMERA_INDEX: int = 0          # hint index for OBS Virtual Camera; agent scans 0-2 on failure
-CAMERA_SCAN_RANGE: int = 3     # number of indices to try when hint fails
+CAMERA_INDEX: int = 1        # hint index for OBS Virtual Camera; agent scans 0-2 on failure
+CAMERA_SCAN_RANGE: int = 2     # number of indices to try when hint fails -> 3
 
 # ── Detection ─────────────────────────────────────────────────────────────────
 CAPTURE_FPS: int = 15
-INFERENCE_INTERVAL: float = 2.0
+INFERENCE_INTERVAL: float = 10.0
 NUM_FRAMES: int = 8
 FRAME_SIZE: int = 224
 NUM_CLASSES: int = 4
@@ -39,12 +39,12 @@ TIER3_OPTIONS = ["Got it", "Need help", "Dismiss"]
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 ORCHESTRATOR_POLL_HZ: float = 1.0
-WARMUP_DURATION: float = 30.0    # REVISED: must match WARMUP_SEC (teacher validation)
+WARMUP_DURATION: float = 600.0    # REVISED: must match WARMUP_SEC (teacher validation)->600
 CONFIDENCE_MIN: float = 0.4       # records below this are excluded from the signal
 ENGAGEMENT_WINDOW_SEC: float = 2
 DISENGAGE_RATIO: float = 0.5      # fraction of window that must be disengaged to trigger
 MIN_TIER_GAP_SEC: float = 60.0    # minimum seconds between successive tier decisions
-MAX_INTERVENTIONS: int = 4        # session cap; reaching it triggers silent mode
+MAX_INTERVENTIONS: int = 4        # session cap; reaching it triggers silent mode -->4
 TIER3_PERSISTENT      = True   # widget stays until clicked; silent mode at session end only
 TIER3_BREAK_NUDGE_SEC = 5      # seconds to show wellness nudge after "break" click
 
@@ -122,8 +122,8 @@ FATIGUE_MIDPOINT: float = 3.0
 FATIGUE_STEEPNESS: float = 1.5
 
 # Cooldown / pacing for intervention actions.
-MIN_GAP_SEC: float = 60.0  # REVISED: longer recovery window (teacher validation)
-WARMUP_SEC: float = 0.0   # REVISED: first 10 min naturally engaging (teacher validation)
+MIN_GAP_SEC: float = 180.0  # REVISED: longer recovery window (teacher validation) ->>180.0 
+WARMUP_SEC: float = 600.0   # REVISED: first 10 min naturally engaging (teacher validation) ->600
 
 # Profile storage (next to the .exe when frozen; repo-root ./profiles otherwise).
 PROFILES_DIR = _BASE_DIR / "profiles"

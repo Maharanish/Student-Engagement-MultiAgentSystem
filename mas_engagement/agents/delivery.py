@@ -121,12 +121,12 @@ class DeliveryAgent:
         self._break_timer: Optional[threading.Timer] = None
 
     def run(self, blackboard, logger) -> None:
-        """Blocking 10 Hz poll loop; returns when stop() is called."""
+        """Event-driven loop; blocks on the message queue, wakes every 0.5 s to
+        check stop_event so graceful shutdown is never delayed more than 0.5 s."""
         while not self._stop_event.is_set():
-            item = blackboard.consume_pending_message()
+            item = blackboard.consume_pending_message(timeout=0.5)
             if item is not None:
                 self._deliver(item, blackboard, logger)
-            time.sleep(_POLL_INTERVAL)
 
     def stop(self) -> None:
         """Signal the poll loop to exit and cancel any pending break timer."""

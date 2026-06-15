@@ -107,6 +107,7 @@ def replay(trace: Dict[str, Any]) -> Tuple[List[Tuple[float, str]], Dict]:
         bb.set_belief_state(belief)
         if action != "do_nothing":
             bb.set_pending_action(action, now)
+            bb.set_last_intervention_ts(now)
         last_poll = now
 
     # Drain a final pending action so the last decision is reflected.
