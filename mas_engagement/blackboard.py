@@ -38,6 +38,10 @@ class SharedState:
             # Timestamp when intervention was dispatched (set_last_intervention_ts),
             # used by cooldown logic to block double-firing before Delivery finishes
             "last_intervention_ts": 0.0,
+            # Timestamp when Detection last finished writing an engagement
+            # observation to the blackboard. Delivery reads it to measure the
+            # end-to-end latency (evidence-written → notification-shown).
+            "last_evidence_ts": 0.0,
         }
         # Queue-based slots — intentionally outside _state and _lock.
         # queue.Queue is internally thread-safe; holding RLock during a
@@ -251,6 +255,19 @@ class SharedState:
         sebelum Delivery selesai — supaya cooldown aktif lebih awal."""
         with self._lock:
             self._state["last_intervention_ts"] = float(ts)
+
+    def set_last_evidence_ts(self, ts: float) -> None:
+        """Record when Detection last finished writing engagement evidence.
+
+        Delivery subtracts this from the notification's display time to log the
+        end-to-end latency (evidence-written → notification-shown)."""
+        with self._lock:
+            self._state["last_evidence_ts"] = float(ts)
+
+    def get_last_evidence_ts(self) -> float:
+        """Return the timestamp of the most recent engagement evidence write."""
+        with self._lock:
+            return float(self._state["last_evidence_ts"])
 
     def is_warmup_active(self, now: float) -> bool:
         """Return True if the warmup period has not yet elapsed relative to now."""

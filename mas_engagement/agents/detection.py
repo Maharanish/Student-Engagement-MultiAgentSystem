@@ -45,6 +45,7 @@ from mas_engagement.config import (  # noqa: E402
     MTCNN_MARGIN_PX,
     NUM_CLASSES,
     NUM_FRAMES,
+    TEMPERATURE_SCALE,
 )
 
 _IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -195,7 +196,17 @@ class DetectionAgent:
                 if now - last_inference >= INFERENCE_INTERVAL:
                     last_inference = now
                     level, confidence, softmax = self._infer()
+                    # Re-stamp AFTER inference: _infer() can take several seconds
+                    # on CPU, but `now` above was captured before it. Using the
+                    # stale pre-inference `now` makes the record older than the
+                    # orchestrator's _last_poll_time (which advances at 1 Hz), so
+                    # its `timestamp > last_poll` filter would drop every record
+                    # after the first. Stamp when the evidence is actually ready.
+                    now = time.time()
                     blackboard.append_engagement(level, confidence, now, softmax=softmax)
+                    # Mark when evidence finished being written, so Delivery can
+                    # measure end-to-end latency to the resulting notification.
+                    blackboard.set_last_evidence_ts(now)
                     logger.log(
                         "detection",
                         "engagement_posted",
@@ -239,6 +250,8 @@ class DetectionAgent:
 
         with torch.no_grad():
             logits = self._model(pixel_values=tensor).logits
+        # Temperature scaling: soften over-confident logits before softmax.
+        logits = logits / TEMPERATURE_SCALE
         probs = torch.softmax(logits, dim=-1)[0]
         softmax = [round(float(p), 6) for p in probs]
         level = int(probs.argmax())

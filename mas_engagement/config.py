@@ -16,7 +16,7 @@ else:
     _BASE_DIR = _PKG_ROOT.parent
 
 # ── Camera ────────────────────────────────────────────────────────────────────
-CAMERA_INDEX: int = 1        # hint index for OBS Virtual Camera; agent scans 0-2 on failure
+CAMERA_INDEX: int = 1      # hint index for OBS Virtual Camera; agent scans 0-2 on failure
 CAMERA_SCAN_RANGE: int = 2     # number of indices to try when hint fails -> 3
 
 # ── Detection ─────────────────────────────────────────────────────────────────
@@ -26,6 +26,10 @@ NUM_FRAMES: int = 8
 FRAME_SIZE: int = 224
 NUM_CLASSES: int = 4
 MTCNN_MARGIN_PX: int = 20
+# Temperature scaling applied to logits before softmax to soften the model's
+# over-confident outputs (logits /= TEMPERATURE_SCALE). >1.0 flattens the
+# distribution, yielding better-calibrated confidences for the Bayesian update.
+TEMPERATURE_SCALE: float = 1.6
 
 # ── Intervention ──────────────────────────────────────────────────────────────
 INTERVENTION_POLL_HZ: float = 5.0
@@ -35,15 +39,10 @@ NO_REPEAT_WINDOW: int = 3      # IDs in this window are excluded from the next p
 DELIVERY_POLL_HZ: float = 10.0
 TOAST_TIMEOUT_SEC: int = 8       # Tier-1 auto-dismiss timeout (seconds)
 TIER2_TIMEOUT_SEC: int = 12      # Tier-2 auto-dismiss timeout (seconds)
-TIER3_OPTIONS = ["Got it", "Need help", "Dismiss"]
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 ORCHESTRATOR_POLL_HZ: float = 1.0
 WARMUP_DURATION: float = 600.0    # REVISED: must match WARMUP_SEC (teacher validation)->600
-CONFIDENCE_MIN: float = 0.4       # records below this are excluded from the signal
-ENGAGEMENT_WINDOW_SEC: float = 2
-DISENGAGE_RATIO: float = 0.5      # fraction of window that must be disengaged to trigger
-MIN_TIER_GAP_SEC: float = 60.0    # minimum seconds between successive tier decisions
 MAX_INTERVENTIONS: int = 4        # session cap; reaching it triggers silent mode -->4
 TIER3_PERSISTENT      = True   # widget stays until clicked; silent mode at session end only
 TIER3_BREAK_NUDGE_SEC = 5      # seconds to show wellness nudge after "break" click
@@ -72,6 +71,10 @@ SESSION_DURATION_SEC: float = 600.0   # default full-session length
 # ── Bayesian Orchestrator (Phase-2 utility-based decision-making) ─────────────
 HIDDEN_STATES = ["actively_dis", "drifting", "engaged", "frustrated"]
 ACTIONS = ["tier_1", "tier_2", "tier_3", "do_nothing"]
+# NOTE: DEFAULT_PRIOR is no longer used as the decay target for the detection
+# belief update (that role is now filled by EWMA forgetting toward the uniform
+# distribution — see EWMA_GAMMA and belief.update_with_ewma). It is still the
+# session bootstrap prior and the fallback belief in the orchestrator.
 DEFAULT_PRIOR = {
     "actively_dis": 0.10,
     "drifting": 0.20,
@@ -114,7 +117,19 @@ UTILITY_MATRIX = np.array(
     dtype=np.float64,
 )
 
-BELIEF_DECAY_RATE: float = 0.001  # λ per second; gentle pull toward DEFAULT_PRIOR
+# λ per second; gentle pull toward DEFAULT_PRIOR.
+# NOTE: no longer used for the detection belief update (replaced by EWMA, see
+# EWMA_GAMMA). Retained only for belief.decay_toward_prior, which is now
+# deprecated / unused by the orchestrator.
+BELIEF_DECAY_RATE: float = 0.001
+
+# ── EWMA belief update (replaces decay_toward_prior + update_with_detection) ───
+# Forgetting factor γ in B_t(s) = (1-γ)·P(O_t|s) + γ·B_{t-1}(s), where
+# P(O_t|s) is the detection evidence mapped to hidden states. Range 0–1:
+# higher γ → slower updates (more weight on belief history). Because
+# (1-γ)+γ = 1 and both inputs are distributions, the result always sums to 1,
+# so the belief can never saturate to a degenerate (one-hot) state.
+EWMA_GAMMA: float = 0.85
 
 # Fatigue penalty for intervention actions: sigmoid in #interventions so far.
 FATIGUE_SCALE: float = 2.0
@@ -124,9 +139,6 @@ FATIGUE_STEEPNESS: float = 1.5
 # Cooldown / pacing for intervention actions.
 MIN_GAP_SEC: float = 180.0  # REVISED: longer recovery window (teacher validation) ->>180.0 
 WARMUP_SEC: float = 600.0   # REVISED: first 10 min naturally engaging (teacher validation) ->600
-
-# Profile storage (next to the .exe when frozen; repo-root ./profiles otherwise).
-PROFILES_DIR = _BASE_DIR / "profiles"
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 # All data paths resolve relative to _BASE_DIR so that the frozen release layout
@@ -161,9 +173,9 @@ USER_CONFIG_OVERRIDES: dict = {}
 USER_CONFIG_WARNINGS: list = []
 
 _OVERRIDABLE = {
-    "CONFIDENCE_MIN":    float,
     "MIN_GAP_SEC":       float,
     "MAX_INTERVENTIONS": int,
+    "FATIGUE_SCALE":     float,
     # WARMUP_SEC and WARMUP_DURATION are handled specially below — they must
     # stay equal because they are read by two different gates (blackboard's
     # warmup_until and the utility-side _cooldown_blocked).

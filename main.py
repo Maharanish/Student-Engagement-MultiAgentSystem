@@ -1,9 +1,8 @@
 """Session entry point: wires the four agents around a shared blackboard.
 
-Startup loads the user's adaptive profile and seeds the belief state with it;
-shutdown (SIGINT or duration timeout) folds the session log back into the
-profile and persists it. `--dry-run` swaps real camera detection for a mock
-that posts Dirichlet-sampled softmax vectors, so the pipeline runs in CI.
+Startup seeds the belief state from DEFAULT_PRIOR and runs until SIGINT or the
+duration timeout. `--dry-run` swaps real camera detection for a mock that posts
+Dirichlet-sampled softmax vectors, so the pipeline runs in CI.
 """
 from __future__ import annotations
 
@@ -47,7 +46,6 @@ from mas_engagement.agents.orchestrator import OrchestratorAgent
 from mas_engagement.blackboard import SharedState
 from mas_engagement.config import (
     DEFAULT_USER_ID,
-    HIDDEN_STATES,
     LOG_DIR,
     NUM_CLASSES,
     SESSION_DURATION_SEC,
@@ -57,11 +55,6 @@ from mas_engagement.config import (
     WARMUP_DURATION,
 )
 from mas_engagement.logger import JsonlLogger
-from mas_engagement.reasoning.profile import (
-    load_profile,
-    save_profile,
-    update_profile_from_session,
-)
 
 _log = logging.getLogger("main")
 
@@ -75,34 +68,44 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--duration", type=float, default=SESSION_DURATION_SEC,
                    help="Session length in seconds (default: SESSION_DURATION_SEC)")
     p.add_argument("--user-id", default=DEFAULT_USER_ID,
-                   help="Profile id to load at startup / save at shutdown")
+                   help="Session label recorded in the log (session_start/session_end)")
     p.add_argument("--dry-run", action="store_true",
                    help="Replace camera detection with a mock softmax generator")
+    p.add_argument("--mock-class", type=int, choices=[0, 1, 2, 3], default=None,
+                   help="Force mock detector to peak at engagement class: "
+                        "0=very_low (disengaged), 1=low, 2=high, 3=very_high (engaged). "
+                        "If not set, uses random Dirichlet distribution (default CI behavior).")
     return p.parse_args()
 
 
-def _initial_belief(profile: dict) -> dict:
-    """Build a belief dict over HIDDEN_STATES from the profile's engagement prior."""
-    prior = profile.get("engagement_prior")
-    if isinstance(prior, dict):
-        belief = {s: float(prior.get(s, 0.0)) for s in HIDDEN_STATES}
-    else:  # list / sequence of floats aligned to HIDDEN_STATES
-        belief = dict(zip(HIDDEN_STATES, (float(x) for x in prior)))
-    total = sum(belief.values())
-    if total > 0:
-        belief = {s: v / total for s, v in belief.items()}
-    return belief
+def _mock_detection_loop(blackboard, logger, stop_event: threading.Event,
+                         mock_class=None) -> None:
+    """Dry-run detector: post a softmax every 10 seconds.
 
-
-def _mock_detection_loop(blackboard, logger, stop_event: threading.Event) -> None:
-    """Dry-run detector: post a Dirichlet-sampled softmax every 10 seconds."""
+    When mock_class is None (default) the softmax is Dirichlet-sampled random
+    noise. When mock_class is set (0-3) the softmax peaks at that class (0.85 at
+    the chosen index, 0.05 elsewhere, then normalized) so a specific engagement
+    trajectory can be forced for testing.
+    """
     rng = np.random.default_rng()
     while not stop_event.is_set():
-        softmax = [round(float(p), 6) for p in rng.dirichlet(np.ones(NUM_CLASSES))]
-        level = int(max(range(NUM_CLASSES), key=lambda i: softmax[i]))
-        confidence = float(max(softmax))
+        if mock_class is not None:
+            raw = [0.05] * NUM_CLASSES
+            raw[mock_class] = 0.85
+            total = sum(raw)
+            softmax = [round(v / total, 6) for v in raw]
+            level = mock_class
+            confidence = float(softmax[mock_class])
+        else:
+            softmax = [round(float(p), 6) for p in rng.dirichlet(np.ones(NUM_CLASSES))]
+            level = int(max(range(NUM_CLASSES), key=lambda i: softmax[i]))
+            confidence = float(max(softmax))
         now = time.time()
         blackboard.append_engagement(level, confidence, now, softmax=softmax)
+        # Mark when evidence finished being written, so Delivery can measure
+        # end-to-end latency to the resulting notification (parity with the
+        # real DetectionAgent).
+        blackboard.set_last_evidence_ts(now)
         logger.log("detection", "engagement_posted",
                    level=level, confidence=confidence, softmax=softmax, mock=True)
         stop_event.wait(_MOCK_DETECTION_INTERVAL)
@@ -132,14 +135,10 @@ def main() -> int:
         for w in USER_CONFIG_WARNINGS:
             _log.warning("user_config.json: %s", w)
 
-    profile = load_profile(args.user_id)
-    _log.info("Loaded profile %r (n_sessions=%s)",
-              args.user_id, profile.get("n_sessions"))
-
-    blackboard = SharedState(
-        warmup_duration=WARMUP_DURATION,
-        initial_belief=_initial_belief(profile),
-    )
+    # Belief is seeded from DEFAULT_PRIOR (SharedState's default when no
+    # initial_belief is supplied) — the per-user adaptive profile subsystem
+    # has been removed.
+    blackboard = SharedState(warmup_duration=WARMUP_DURATION)
     blackboard.set_session_start_time(time.time())
     logger.log("main", "session_start", user_id=args.user_id,
                duration=args.duration, dry_run=args.dry_run)
@@ -156,7 +155,8 @@ def main() -> int:
 
     if args.dry_run:
         threads.append(threading.Thread(
-            target=_mock_detection_loop, args=(blackboard, logger, stop_event),
+            target=_mock_detection_loop,
+            args=(blackboard, logger, stop_event, args.mock_class),
             name="mock-detection", daemon=True))
     else:
         detection_agent = DetectionAgent(use_mock=False)
@@ -224,10 +224,6 @@ def main() -> int:
         transform_log_to_readable(logger._out_path)
     elif hasattr(logger, 'current_log_path'):
         transform_log_to_readable(logger.current_log_path)
-
-    # profile = update_profile_from_session(profile, logger.path)
-    # save_profile(args.user_id, profile)
-    # _log.info("Saved profile %r (n_sessions=%s)", args.user_id, profile.get("n_sessions"))
 
     return 0
 

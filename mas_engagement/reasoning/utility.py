@@ -26,6 +26,20 @@ def fatigue_cost(n_interventions: int) -> float:
     return FATIGUE_SCALE / (1.0 + math.exp(-x))
 
 
+def dynamic_cooldown_gap(base_gap: float, n_interventions: int) -> float:
+    """
+    Cooldown adaptif berbasis riwayat intervensi.
+    base_gap (divalidasi praktisi pendidikan) adalah batas minimum absolut.
+    Multiplier 0.3 per intervensi mencegah intervention fatigue,
+    konsisten dengan Scaffolding Theory.
+
+    n=0 → base_gap (nilai praktisi terpenuhi)
+    n=1 → base_gap * 1.3
+    n=2 → base_gap * 1.6
+    """
+    return base_gap * (1.0 + 0.3 * n_interventions)
+
+
 def _cooldown_blocked(snapshot: dict, now: float) -> bool:
     if snapshot.get("silent_mode"):
         return True
@@ -36,18 +50,23 @@ def _cooldown_blocked(snapshot: dict, now: float) -> bool:
     session_start = float(snapshot.get("session_start", now))
     if (now - session_start) < WARMUP_SEC:
         return True
+    # Dynamic cooldown: the minimum gap grows with the number of interventions
+    # already delivered (intervention_count — the same key fatigue_cost uses),
+    # so repeated nudges back off progressively to avoid intervention fatigue.
+    n_interventions = int(snapshot.get("intervention_count", 0))
+    gap = dynamic_cooldown_gap(MIN_GAP_SEC, n_interventions)
     # Cooldown: prefer last_intervention_ts (set when Orchestrator decides)
     # over interventions array (set when Delivery appends), to activate
     # cooldown immediately and prevent double-firing. Fall back to
     # interventions for backward compatibility with tests/old snapshots.
     last_intervention_ts = float(snapshot.get("last_intervention_ts", 0.0))
-    if last_intervention_ts > 0.0 and (now - last_intervention_ts) < MIN_GAP_SEC:
+    if last_intervention_ts > 0.0 and (now - last_intervention_ts) < gap:
         return True
     # Fallback: check interventions array if last_intervention_ts not set.
     interventions = snapshot.get("interventions", []) or []
     if interventions and last_intervention_ts == 0.0:
         last_delivery_ts = max(float(i["ts"]) for i in interventions)
-        if (now - last_delivery_ts) < MIN_GAP_SEC:
+        if (now - last_delivery_ts) < gap:
             return True
     return False
 

@@ -150,6 +150,15 @@ class DeliveryAgent:
         _play_tier_chime(tier)
 
         t_show = time.time()
+        # End-to-end latency: from Detection finishing its evidence write to the
+        # moment this notification is displayed. None if no evidence was logged
+        # yet (e.g. a CLI-injected test message).
+        last_evidence_ts = blackboard.get_last_evidence_ts()
+        e2e_latency_ms = (
+            round((t_show - last_evidence_ts) * 1000.0, 1)
+            if last_evidence_ts > 0.0
+            else None
+        )
         response = self._show_overlay(msg, tier, payload, intent)
         latency_ms = (time.time() - t_show) * 1000.0
 
@@ -167,6 +176,7 @@ class DeliveryAgent:
             response=response,
             response_action=response_action,
             latency_ms=round(latency_ms, 1),
+            e2e_latency_ms=e2e_latency_ms,
         )
         _log.info(
             "tier=%s msg_id=%s response=%r latency=%.0f ms",

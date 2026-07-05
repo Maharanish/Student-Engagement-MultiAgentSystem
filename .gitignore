@@ -1,0 +1,75 @@
+# ============================================================
+# .gitignore  –  Student Engagement Detection project
+# ============================================================
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyo
+
+# ----- Virtual environments -----
+.venv/
+venv/
+env/
+ENV/
+
+# ----- Data (large files – use Kaggle Datasets or DVC) -----
+data/raw/
+data/processed/
+data/splits/
+*.avi
+*.mp4
+*.mov
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pkl
+*.joblib
+
+# ----- Model checkpoints -----
+checkpoints/
+*.pth 
+*.pt
+*.ckpt
+*.bin
+*.safetensors
+
+# ----- Experiment outputs -----
+outputs/
+runs/
+logs/
+
+# ----- Weights & Biases -----
+wandb/
+
+# ----- Kaggle credentials (NEVER commit) -----
+kaggle.json
+.kaggle/
+
+# ----- Jupyter -----
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ----- IDE / OS -----
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.env
+.env.*
+
+# ----- Distribution / packaging -----
+*.spec
