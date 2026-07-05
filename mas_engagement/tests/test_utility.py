@@ -83,8 +83,9 @@ def test_all_intervention_eus_negative_inf_within_cooldown():
         else:
             assert eus[a] == float("-inf"), f"action {a} should be blocked, got {eus[a]}"
 
-    # After MIN_GAP_SEC elapses, at least some intervention EU is finite again.
-    later = now + MIN_GAP_SEC + 1.0
+    # After the dynamic cooldown gap elapses (n=1 → MIN_GAP_SEC * 1.3), at
+    # least some intervention EU is finite again.
+    later = now + U.dynamic_cooldown_gap(MIN_GAP_SEC, 1) + 1.0
     _, eus_after = U.choose_action(b, snap, later)
     assert any(math.isfinite(eus_after[a]) for a in ACTIONS if a != "do_nothing")
 

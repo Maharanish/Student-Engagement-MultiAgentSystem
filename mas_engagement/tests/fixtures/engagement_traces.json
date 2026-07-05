@@ -2901,8 +2901,10 @@
       "invariants": {
         "intervention_count": 0,
         "silent_mode": false,
-        "final_belief_engaged_min": 0.9994460171804178,
-        "final_frustrated_min": 0.00021825411136371797
+        "final_belief_engaged_min": 0.4987,
+        "final_frustrated_min": 0.1986,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -5805,18 +5807,14 @@
     ],
     "expected": {
       "actions": [
-        "tier_2",
-        "tier_2",
-        "tier_2",
-        "tier_2"
+        "tier_3"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.0003120524198914999,
-        "final_frustrated_min": 0.0004630723576660908,
-        "has_tier3": false,
-        "no_tier3": true
+        "intervention_count": 1,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0503,
+        "final_frustrated_min": 0.2691,
+        "has_tier3": true
       }
     }
   },
@@ -10759,16 +10757,13 @@
     ],
     "expected": {
       "actions": [
-        "tier_1",
-        "tier_1",
-        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.0006551225455733838,
-        "final_frustrated_min": 0.0002906977228751531,
+        "intervention_count": 1,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.1287,
+        "final_frustrated_min": 0.2296,
         "has_tier3": false,
         "no_tier3": true
       }
@@ -16782,17 +16777,14 @@
     "expected": {
       "actions": [
         "tier_1",
-        "tier_1",
-        "tier_2",
-        "tier_2"
+        "tier_3"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.00080774740834342,
-        "final_frustrated_min": 0.00040833057002258804,
-        "has_tier3": false,
-        "no_tier3": true
+        "intervention_count": 2,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0503,
+        "final_frustrated_min": 0.2691,
+        "has_tier3": true
       }
     }
   },
@@ -19314,17 +19306,14 @@
     "expected": {
       "actions": [
         "tier_1",
-        "tier_1",
-        "tier_1",
-        "tier_1"
+        "tier_3"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.16352856087476642,
-        "final_frustrated_min": 0.3014362476384323,
-        "has_tier3": false,
-        "no_tier3": true
+        "intervention_count": 2,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0,
+        "final_frustrated_min": 0.5344,
+        "has_tier3": true
       }
     }
   },
@@ -22230,8 +22219,10 @@
       "invariants": {
         "intervention_count": 0,
         "silent_mode": false,
-        "final_belief_engaged_min": 0.6,
-        "final_frustrated_min": 0.1
+        "final_belief_engaged_min": 0.23,
+        "final_frustrated_min": 0.23,
+        "has_tier3": false,
+        "no_tier3": true
       }
     }
   },
@@ -24692,16 +24683,13 @@
     ],
     "expected": {
       "actions": [
-        "tier_1",
-        "tier_1",
-        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.05562426618176287,
-        "final_frustrated_min": 0.30693708075585985,
+        "intervention_count": 1,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0399,
+        "final_frustrated_min": 0.4392,
         "has_tier3": false,
         "no_tier3": true
       }
@@ -28837,14 +28825,13 @@
     ],
     "expected": {
       "actions": [
-        "tier_1",
         "tier_1"
       ],
       "invariants": {
-        "intervention_count": 2,
+        "intervention_count": 1,
         "silent_mode": false,
-        "final_belief_engaged_min": 0.9996305247068025,
-        "final_frustrated_min": 0.00014558103004454646,
+        "final_belief_engaged_min": 0.4987,
+        "final_frustrated_min": 0.1986,
         "has_tier3": false,
         "no_tier3": true
       }
@@ -35469,18 +35456,16 @@
     ],
     "expected": {
       "actions": [
-        "tier_1",
         "tier_2",
-        "tier_2",
-        "tier_2"
+        "tier_3",
+        "tier_3"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.000207955363707127,
-        "final_frustrated_min": 0.00030863920923181973,
-        "has_tier3": false,
-        "no_tier3": true
+        "intervention_count": 3,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0503,
+        "final_frustrated_min": 0.2691,
+        "has_tier3": true
       }
     }
   },
@@ -38002,17 +37987,14 @@
     "expected": {
       "actions": [
         "tier_1",
-        "tier_1",
-        "tier_1",
-        "tier_1"
+        "tier_3"
       ],
       "invariants": {
-        "intervention_count": 4,
-        "silent_mode": true,
-        "final_belief_engaged_min": 0.2767025357046454,
-        "final_frustrated_min": 0.24920524515692333,
-        "has_tier3": false,
-        "no_tier3": true
+        "intervention_count": 2,
+        "silent_mode": false,
+        "final_belief_engaged_min": 0.0,
+        "final_frustrated_min": 0.5344,
+        "has_tier3": true
       }
     }
   }
