@@ -73,3 +73,7 @@ Thumbs.db
 
 # ----- Distribution / packaging -----
 *.spec
+
+# ----- Large model / data files (never commit) -----
+mas_engagement/data/*.zip
+mas_engagement/data/*.pth
